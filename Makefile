@@ -7,27 +7,38 @@ CFLAGS = -g
 CFLAGS2 = -g -Wall -Werror
 
 MYDBUSLIB_SOURCES     = dbus_base.cc
-MYDBUSLIB_OUTPUTFILE  = libmydbus.so
+MYDBUSLIB_SHARED_OUTPUTFILE  = libmydbus.so
+MYDBUSLIB_STATIC_OUTPUTFILE  = libmydbus.a
 LIB_INSTALLDIR  = lib
 
 CXX	= g++
 LDFLAGS = -shared -fPIC
+LDFLAGS2 = -static
 
-all: $(MYDBUSLIB_OUTPUTFILE) daemonA
+APPLICATION_1 = daemonA
 
-$(MYDBUSLIB_OUTPUTFILE): $(subst .cpp,.o,$(MYDBUSLIB_SOURCES)) 
+all: $(MYDBUSLIB_SHARED_OUTPUTFILE) $(MYDBUSLIB_STATIC_OUTPUTFILE) $(APPLICATION_1) 
+
+$(MYDBUSLIB_SHARED_OUTPUTFILE): $(subst .cpp,.o,$(MYDBUSLIB_SOURCES)) 
 	$(CXX) $(LDFLAGS) -o $@ $^ $(CFLAGS) $(CFLAGS_DBUS) $(CFLAGS_DBUS_GLIB)
+
+$(MYDBUSLIB_STATIC_OUTPUTFILE): $(subst .cpp,.o,$(MYDBUSLIB_SOURCES)) 
+	$(CXX) -c $^ $(CFLAGS_DBUS) $(CFLAGS_DBUS_GLIB)
+	ar rvs $(MYDBUSLIB_STATIC_OUTPUTFILE) dbus_base.o
+	ranlib $@
+	rm dbus_base.o
 
 .PHONY: install
 install:
 	mkdir -p $(LIB_INSTALLDIR)
-	mv $(MYDBUSLIB_OUTPUTFILE) $(LIB_INSTALLDIR)
+	mv $(MYDBUSLIB_SHARED_OUTPUTFILE) $(MYDBUSLIB_STATIC_OUTPUTFILE) $(LIB_INSTALLDIR)
 
-daemonA: service_daemon_a.cc 
-	$(CXX) $< -o $@ $(CFLAGS_DBUS) $(CFLAGS_DBUS_GLIB) -L./lib/$(MYDBUSLIB_OUTPUTFILE)
+$(APPLICATION_1): service_daemon_a.cc 
+	$(CXX) $< -o $@ $(CFLAGS_DBUS) $(CFLAGS_DBUS_GLIB) -L./lib/$(MYDBUSLIB_SHARED_OUTPUTFILE)
 
 clean:
-	rm -f daemonA
+	rm -f $(APPLICATION_1)
+	rm -rf $(LIB_INSTALLDIR)
 
 
 .PHONY: all clean
